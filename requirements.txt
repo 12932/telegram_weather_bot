@@ -1,0 +1,6 @@
+httpx
+python-telegram-bot
+lxml
+pytz
+loguru
+python-dotenv
