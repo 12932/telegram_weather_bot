@@ -37,6 +37,7 @@ FORECA_EMOJI_MAPPINGS: Dict[str, str] = {
     "n300": EMOJI_MAPPINGS["cloudy"],
     "n320": EMOJI_MAPPINGS["rain"],
     "n400": EMOJI_MAPPINGS["cloudy"],
+    "n410": EMOJI_MAPPINGS["cloudy"],
     "n420": EMOJI_MAPPINGS["rain"],
     "n430": EMOJI_MAPPINGS["thunderstorm"],
 }
