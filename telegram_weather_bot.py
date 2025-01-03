@@ -12,24 +12,23 @@ from datetime import datetime
 from dotenv import load_dotenv
 import os
 
-# Configure loguru
-logger.remove()
-logger.add(sys.stderr)
-logger.add(
-	"logs/weather_bot.log",
-	retention="1 month",
-	level="INFO",
-	encoding="utf-8"
-)
-logger.add(
-	"logs/weather_bot_errors.log",
-	retention="1 month",
-	level="ERROR",
-	encoding="utf-8",
-	backtrace=True,
-	diagnose=True
-)
-
+def configure_loguru():
+	logger.remove()
+	logger.add(sys.stderr)
+	logger.add(
+		"logs/weather_bot.log",
+		retention="1 month",
+		level="INFO",
+		encoding="utf-8"
+	)
+	logger.add(
+		"logs/weather_bot_errors.log",
+		retention="1 month",
+		level="ERROR",
+		encoding="utf-8",
+		backtrace=True,
+		diagnose=True
+	)
 
 class WeatherBot:
 	FORECA_BASE_URL = "https://api.foreca.net"
@@ -39,7 +38,7 @@ class WeatherBot:
 	FORECA_FAVOURITES_ENDPOINT = "/data/favorites/{}.json"
 	FORECA_STATUS_DIV_XPATH = '(//div[@class="row wx"])[1]'
 	DEFAULT_TIMEOUT = (3.9, 11)
-	MS_TO_KMH_CONVERSION = 3.6
+	METERS_PER_SEC_TO_KMH_RATE= 3.6
 	DAYS_TO_FORECAST = 3
 	HELP_TEXT = """
 Available commands:
@@ -201,10 +200,10 @@ Available commands:
 		wind_speed = current.get("winds")
 		wind_gusts = current.get("maxwind")
 		if wind_speed is not None:
-			wind_speed_kmh = wind_speed * self.MS_TO_KMH_CONVERSION
+			wind_speed_kmh = wind_speed * self.METERS_PER_SEC_TO_KMH_RATE
 			wind_str = f"{wind_speed_kmh:.1f} km/h"
 			if wind_gusts is not None and wind_gusts > wind_speed:
-				wind_gusts_kmh = wind_gusts * self.MS_TO_KMH_CONVERSION
+				wind_gusts_kmh = wind_gusts * self.METERS_PER_SEC_TO_KMH_RATE
 				wind_str += f" (gusting to {wind_gusts_kmh:.1f} km/h)"
 		else:
 			wind_str = "Wind speed unavailable"
@@ -326,7 +325,7 @@ Available commands:
 			await update.message.reply_text(response, disable_web_page_preview=True)
 			
 		except Exception as e:
-			logger.error(f"Error getting weather data: {str(e)}", exc_info=True)
+			logger.error(f"Error getting weather data: {e}", exc_info=True)
 			await update.message.reply_text("Sorry, there was an error getting the weather data")
 
 	async def weather_forecast(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -403,6 +402,7 @@ Available commands:
 			raise
 
 if __name__ == '__main__':
+	configure_loguru()
 	load_dotenv()
 
 	# Get the token from environment variables
