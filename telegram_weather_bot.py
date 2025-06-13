@@ -229,7 +229,7 @@ Available commands:
 			
 		return response
 
-	def format_forecast_response(self, location: Dict[str, Any], forecast_data: List[Dict[str, Any]]) -> str:
+	def format_forecast_response(self, location: Dict[str, Any], forecast_data: List[Dict[str, Any]], current_temp_value: Optional[Any] = None) -> str:
 		"""Format the weather forecast response string"""
 		if not forecast_data:
 			return "No weather forecast data available"
@@ -251,11 +251,15 @@ Available commands:
 			rainp = day.get('rainp', 0)
 			rain_str = f"{rainp}% chance of rain" if rainp > 0 else ""
 
-			forecast_response += (
-				f"\n{day_name} - {conditions}  {tmin}°C - {tmax}°C"
-				f"{' (currently ' + str(day.get('tmax', 'N/A')) + '°C)' if i == 0 else ''}"
-				f"   {rain_str}"
-			)
+			day_forecast_str = f"\n{day_name} - {conditions}  {tmin}°C - {tmax}°C"
+			if i == 0:  # Add current temperature for today
+				if current_temp_value is not None:
+					day_forecast_str += f" (currently {current_temp_value}°C)"
+				else:
+					day_forecast_str += " (current N/A)"
+			
+			day_forecast_str += f"   {rain_str}"
+			forecast_response += day_forecast_str
 
 		return forecast_response
 
@@ -364,13 +368,30 @@ Available commands:
 			weather_data = weather_response.json()
 			logger.debug(f"Weather forecast data response: {weather_data}")
 			
-			# Extract the forecast for the first 3 days
-			forecast_data = weather_data.get(str(location_id), [])[:self.DAYS_TO_FORECAST]
-			if not forecast_data:
+			# Extract the forecast for the first N days
+			forecast_data_list = weather_data.get(str(location_id), [])[:self.DAYS_TO_FORECAST]
+			if not forecast_data_list:
 				raise ValueError("No weather data forecast found for this location")
+
+			# Get CURRENT weather data to extract actual current temperature for today's forecast
+			actual_current_temp: Optional[Any] = None
+			try:
+				current_weather_api_url = f"{self.FORECA_WEATHER_ENDPOINT.format(location_id)}"
+				logger.info(f"Getting current weather for forecast display from: {current_weather_api_url}")
+				current_weather_http_response = self.http_client.get(current_weather_api_url)
+				current_weather_http_response.raise_for_status() # Check for HTTP errors
+				current_weather_json_data = current_weather_http_response.json()
+				current_conditions = current_weather_json_data.get(str(location_id))
+				if current_conditions:
+					actual_current_temp = current_conditions.get('temp')
+					logger.info(f"Successfully fetched current temp for forecast: {actual_current_temp}°C")
+				else:
+					logger.warning(f"Current conditions not found in API response for location {location_id} for forecast.")
+			except Exception as e_curr_weather:
+				logger.warning(f"Could not fetch/process current temperature for forecast: {e_curr_weather}")
 			
-			# Format the forecast response
-			forecast_response = self.format_forecast_response(location, forecast_data)
+			# Format the forecast response, passing the fetched current temperature
+			forecast_response = self.format_forecast_response(location, forecast_data_list, actual_current_temp)
 
 			logger.info(f"Sending weather forecast response for {location.get('name', 'Unknown')}")
 			await update.message.reply_text(forecast_response)
